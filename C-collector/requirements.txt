@@ -1,0 +1,4 @@
+# IoT Collector 依赖包
+
+paho-mqtt==1.6.1
+
