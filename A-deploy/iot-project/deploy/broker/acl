@@ -1,0 +1,41 @@
+# ACL (Access Control List) for IoT Project
+# Format: user <username>
+#         topic [read|write|readwrite] <topic>
+#
+# Wildcard:
+#   # matches multiple levels (e.g., env/# matches env/temperature, env/humidity, etc.)
+#   + matches single level (e.g., env/+ matches env/temperature but not env/sub/temperature)
+
+# ============================================================
+# Admin Account (Optional - Full Access)
+# ============================================================
+user admin
+topic readwrite #
+
+# ============================================================
+# Publisher Account (发布端 B 使用)
+# ============================================================
+# 只允许向 ingest/env/# 发布数据
+user publisher
+topic write ingest/env/#
+
+# ============================================================
+# Proxy Account (代理服务使用)
+# ============================================================
+# 允许读取 ingest/env/# （接收上游数据）
+# 允许写入 env/# （转发到下游）
+user proxy
+topic read ingest/env/#
+topic write env/#
+
+# ============================================================
+# Collector Account (订阅端 C 使用)
+# ============================================================
+# 只允许订阅 env/# （接收官方数据）
+user collector
+topic read env/#
+
+# ============================================================
+# 系统 Topic（所有用户只读）
+# ============================================================
+pattern read $SYS/#
