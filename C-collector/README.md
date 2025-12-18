@@ -94,6 +94,89 @@ INFO:     Uvicorn running on http://0.0.0.0:8000
 
 ---
 
+## 👀 给 D（PyQt）同学的快速对接指南
+
+> 你可以完全不用关心 MQTT 和 SQLite，只把 C 看成一个提供 HTTP 接口的数据服务。
+
+- **1）C 的服务地址**
+  - 由 C 同学提供一个 IP，比如：`http://192.168.1.100:8000`
+  - 以下所有接口的完整 URL 形式：`http://<C服务器IP>:8000/api/...`
+
+- **2）你只需要用到 3 个接口**
+  - **实时曲线（用于“当前实时数据”折线图）**
+    - `GET /api/realtime?metric=<metric>&limit=<N>`
+    - `metric`：`temperature` / `humidity` / `pressure`
+    - `limit`：最多要多少个点，例如 `200`
+    - 返回：
+      ```json
+      {
+        "metric": "temperature",
+        "points": [
+          {"ts": "2025-12-18T10:00:00", "value": 4.0},
+          ...
+        ]
+      }
+      ```
+  - **历史曲线（用于“选择时间范围”的历史图）**
+    - `GET /api/history?metric=<metric>&from=<ISO>&to=<ISO>`
+    - 例如：`/api/history?metric=humidity&from=2014-02-13T00:00:00&to=2014-02-13T03:00:00`
+    - 返回结构与 `/api/realtime` 完全一样，只是时间范围由你指定。
+  - **统计信息（用于右侧/下方的统计面板）**
+    - `GET /api/stats?metric=<metric>&from=<ISO>&to=<ISO>`
+    - 返回：
+      ```json
+      {
+        "metric": "temperature",
+        "count": 72,
+        "missing": 0,
+        "min": 4.0,
+        "max": 6.0,
+        "mean": 4.93
+      }
+      ```
+    - 含义：
+      - `count`：该时间段内总记录数
+      - `missing`：`value=null` 的条数
+      - `min/max/mean`：仅基于有效值计算（NULL 不参与）
+
+- **3）推荐的 GUI 行为映射**
+  - 指标下拉框：`temperature / humidity / pressure` → 直接映射到 `metric` 参数。
+  - 时间范围控件：开始时间、结束时间 → 传给 `from` / `to` 参数（格式必须是 `YYYY-MM-DDTHH:MM:SS`）。
+  - “刷新”按钮：
+    - 先调 `/api/history` 更新主折线图；
+    - 再调 `/api/stats` 更新统计面板。
+  - “实时模式”（如果需要）：
+    - 定时（比如每 2 秒）调用 `/api/realtime`，刷新最近 N 个点的曲线。
+
+- **4）PyQt 调用示例（requests 版本，伪代码）**
+
+```python
+import requests
+
+BASE_URL = "http://<C服务器IP>:8000"
+
+def fetch_history(metric, start_ts, end_ts):
+    resp = requests.get(
+        f"{BASE_URL}/api/history",
+        params={"metric": metric, "from": start_ts, "to": end_ts},
+        timeout=5,
+    )
+    data = resp.json()      # {"metric": "...", "points": [...]}
+    return data["points"]   # 传给画图函数
+
+def fetch_stats(metric, start_ts, end_ts):
+    resp = requests.get(
+        f"{BASE_URL}/api/stats",
+        params={"metric": metric, "from": start_ts, "to": end_ts},
+        timeout=5,
+    )
+    return resp.json()      # 用于更新统计面板
+```
+
+> 实际 PyQt 中可以用 `QThread`/`QtConcurrent` 包一层，避免阻塞 UI 线程；核心就是：**按上面 URL 和 JSON 结构调用即可**。
+
+---
+
 ## ✅ 验证方法
 
 ### 方法1：使用验证脚本（推荐，验证 SQLite）
