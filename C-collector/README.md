@@ -177,6 +177,46 @@ def fetch_stats(metric, start_ts, end_ts):
 
 ---
 
+## 🧱 给 D 的补充说明：collector.py 的角色
+
+- **collector.py 做什么？**
+  - 常驻后台进程：订阅 `env/#`，把 MQTT 消息持续写入 `data/measurements.db`。
+  - 不直接对 D 暴露接口，D 只通过 `api.py`（HTTP）间接使用这些数据。
+
+- **由谁启动？**
+  - 通常由 C 端或运维脚本启动，例如：
+    ```bash
+    cd C-collector
+    export MQTT_BROKER_HOST="139.224.237.20"
+    export MQTT_BROKER_PORT=1883
+    export MQTT_USERNAME="collector"
+    export MQTT_PASSWORD="col123"
+    python collector.py
+    ```
+  - Windows PowerShell 类似：
+    ```powershell
+    cd C-collector
+    $env:MQTT_BROKER_HOST="139.224.237.20"
+    $env:MQTT_BROKER_PORT="1883"
+    $env:MQTT_USERNAME="collector"
+    $env:MQTT_PASSWORD="col123"
+    python collector.py
+    ```
+
+- **D 需要“控制”它吗？**
+  - 一般不需要、也不推荐 PyQt 直接启停 `collector.py`。
+  - 只要：
+    - `/api/realtime` 能拿到最近一段时间的数据；
+    - `/api/history` / `/api/stats` 在设定时间范围内有数据；
+    - 就可以认为 `collector.py` 和整个 B→A→C 链路都是健康的。
+
+- **如果 API 没有数据怎么办？**
+  - 在 GUI 上给出友好提示，例如：
+    > “后端数据服务暂不可用，请联系 C 端同学检查 collector / API 是否已启动。”
+  - 这样既保持了模块解耦，又能让老师看到你们有清晰的职责边界设计。
+
+---
+
 ## ✅ 验证方法
 
 ### 方法1：使用验证脚本（推荐，验证 SQLite）
