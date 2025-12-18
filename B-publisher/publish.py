@@ -36,10 +36,12 @@ def read_file(path,start,end):
         for line in file:
             data = json.loads(line)
             for key, value in data.items():
+                # 筛选时间区间
                 if start is not None and key < start:
                     continue
                 if end is not None and key > end:
                     continue
+
                 result={
                     "ts": key,
                     "value": None if value=="" else float(value)
@@ -80,12 +82,14 @@ def publish_data(metric,rate=1,start=None,end=None):
     global rate_hz
     rate_hz = float(rate)
 
+    # metric 映射文件
     input_dict={
         'temperature': 'B-publisher/data/temperature.txt',
         'humidity': 'B-publisher/data/humidity.txt',
         'pressure': 'B-publisher/data/pressure.txt'
     }
 
+    # 读取制定metric、时间区间的数据
     payloads=read_file(input_dict[metric],start,end)
     
     # 创建客户端
@@ -119,26 +123,30 @@ def publish_data(metric,rate=1,start=None,end=None):
     i=0
     next_send = time.perf_counter()
     while i<len(payloads) and not stop_event.is_set():
-        pause_event.wait()  # 等待运行信号
-
+        pause_event.wait()  # 等待运行信号 pause_event=True 时继续
+        
+        # 恢复运行时 重置发送时间
         if resume_event.is_set():
             next_send = time.perf_counter()
             resume_event.clear()
 
+        # 控制发送速率
         now = time.perf_counter()
         if next_send > now:
             time.sleep(next_send - now)
 
         payload = payloads[i]
-        # print(i)
         print(f"Payload: {json.dumps(payload)}")
 
+        # 发布
         result = client.publish(topic, json.dumps(payload), qos=0)
         pending_mids.add(result.mid)
 
-        i+=1
-        interval = 1.0 / max(rate_hz, 0.0001)  # 每条间隔秒 支持动态修改 rate_hz
+        # 每条间隔秒 支持动态修改 rate_hz
+        interval = 1.0 / max(rate_hz, 0.0001)  
         next_send += interval 
+
+        i+=1
 
     # 等待回调完成（最多 5 秒，避免卡死）
     t0 = time.time()
@@ -152,6 +160,7 @@ def publish_data(metric,rate=1,start=None,end=None):
     print("✓ 完成")    
     
 if __name__ == "__main__":
+    # 读取命令行参数
     parser = argparse.ArgumentParser()
     parser.add_argument("--metric", "-m", choices=["temperature","humidity","pressure"], required=True)
     parser.add_argument("--rate", "-r", type=float, required=True)
@@ -161,7 +170,7 @@ if __name__ == "__main__":
                         help="终止时间，如 2014-05-30T08:00:00（包含）")
     args = parser.parse_args()
 
-    # 控制线程：读 stdin
+    # 控制线程：读 stdin 可以控制发布的暂停/恢复/修改速率/停止
     t = threading.Thread(target=control_loop, daemon=True)
     t.start()
 
