@@ -32,8 +32,8 @@ pip install -r requirements.txt
 ```python
 BROKER_HOST = "139.224.237.20"  # MQTT Broker地址
 BROKER_PORT = 1883
-USERNAME = "subscriber"          # 用户名
-PASSWORD = "sub123"              # 密码
+USERNAME = "collector"          # 用户名
+PASSWORD = "col123"              # 密码
 ```
 
 ### 3. 运行采集器（MQTT → SQLite）
@@ -303,7 +303,7 @@ curl "http://127.0.0.1:8000/api/stats?metric=temperature&from=2014-02-13T00:00:0
 在另一个终端监听MQTT消息（确保采集器也能收到）：
 
 ```bash
-mosquitto_sub -h 139.224.237.20 -t "env/#" -v -u subscriber -P sub123
+mosquitto_sub -h 139.224.237.20 -t "env/#" -v -u collector -P col123
 ```
 
 ## 🗄️ 数据库结构

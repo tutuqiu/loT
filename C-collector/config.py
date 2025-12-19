@@ -5,8 +5,8 @@
 # MQTT Broker配置
 BROKER_HOST = "139.224.237.20"
 BROKER_PORT = 1883
-USERNAME = "subscriber"
-PASSWORD = "sub123"
+USERNAME = "collector"
+PASSWORD = "col123"
 
 # 订阅主题
 SUBSCRIBE_TOPIC = "env/#"

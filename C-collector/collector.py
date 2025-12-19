@@ -18,7 +18,7 @@ import paho.mqtt.client as mqtt
 BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "127.0.0.1")  # 从环境变量读取
 BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT", "1883"))
 USERNAME = os.getenv("MQTT_USERNAME", "collector")
-PASSWORD = os.getenv("MQTT_PASSWORD", "")  # 从环境变量读取，不硬编码
+PASSWORD = os.getenv("MQTT_PASSWORD", "col123")  # 从环境变量读取，默认 col123
 SUBSCRIBE_TOPIC = "env/#"
 
 # 数据库配置
