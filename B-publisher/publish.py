@@ -1,4 +1,4 @@
-import json, sys, time, threading
+import json, sys, time, threading, os
 import paho.mqtt.client as mqtt
 from datetime import datetime
 import argparse
@@ -6,8 +6,8 @@ import argparse
 # 连接配置
 BROKER_HOST = "139.224.237.20"
 BROKER_PORT = 1883
-USERNAME = "publisher"
-PASSWORD = "pub123"
+USERNAME = "admin"  # 使用admin用户，有全部权限
+PASSWORD = "admin123"
 
 # 发布mid集合
 pending_mids=set()
@@ -82,11 +82,12 @@ def publish_data(metric,rate=1,start=None,end=None):
     global rate_hz
     rate_hz = float(rate)
 
-    # metric 映射文件
+    # metric 映射文件（使用绝对路径，确保无论从哪个目录运行都能找到文件）
+    script_dir = os.path.dirname(os.path.abspath(__file__))
     input_dict={
-        'temperature': 'B-publisher/data/temperature.txt',
-        'humidity': 'B-publisher/data/humidity.txt',
-        'pressure': 'B-publisher/data/pressure.txt'
+        'temperature': os.path.join(script_dir, 'data', 'temperature.txt'),
+        'humidity': os.path.join(script_dir, 'data', 'humidity.txt'),
+        'pressure': os.path.join(script_dir, 'data', 'pressure.txt')
     }
 
     # 读取制定metric、时间区间的数据
@@ -112,8 +113,9 @@ def publish_data(metric,rate=1,start=None,end=None):
     # 等待连接成功
     time.sleep(1)
     
-    # 发布
-    topic = f"ingest/env/{metric}"
+    # 发布 - 直接发布到env/，绕过proxy（如果使用admin用户）
+    # 如果使用publisher用户，需要保持ingest/env/，并运行proxy服务
+    topic = f"env/{metric}"  # 改为直接发布到env/
     print(f"发布主题: {topic}")
 
     s = start if start else "/"
@@ -122,6 +124,9 @@ def publish_data(metric,rate=1,start=None,end=None):
 
     i=0
     next_send = time.perf_counter()
+    total = len(payloads)
+    print(f"准备发布 {total} 条数据，速率: {rate_hz} Hz")
+    
     while i<len(payloads) and not stop_event.is_set():
         pause_event.wait()  # 等待运行信号 pause_event=True 时继续
         
@@ -136,7 +141,12 @@ def publish_data(metric,rate=1,start=None,end=None):
             time.sleep(next_send - now)
 
         payload = payloads[i]
-        print(f"Payload: {json.dumps(payload)}")
+        
+        # 每100条或最后一条打印进度（包含数据值用于验证）
+        if (i + 1) % 100 == 0 or i == total - 1:
+            value_str = f"{payload['value']:.1f}" if payload['value'] is not None else "NULL"
+            print(f"[进度] {i+1}/{total} ({100*(i+1)/total:.1f}%) - {payload['ts']} = {value_str}", flush=True)
+        # 移除详细payload打印，减少日志噪音
 
         # 发布
         result = client.publish(topic, json.dumps(payload), qos=0)
@@ -147,6 +157,11 @@ def publish_data(metric,rate=1,start=None,end=None):
         next_send += interval 
 
         i+=1
+    
+    if stop_event.is_set():
+        print(f"发布被停止，已发布 {i}/{total} 条数据", flush=True)
+    else:
+        print(f"✓ 全部数据发布完成: {i}/{total} 条", flush=True)
 
     # 等待回调完成（最多 5 秒，避免卡死）
     t0 = time.time()

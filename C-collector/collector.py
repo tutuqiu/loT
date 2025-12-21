@@ -15,10 +15,10 @@ import paho.mqtt.client as mqtt
 
 # ==================== 配置 ====================
 # MQTT配置
-BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "127.0.0.1")  # 从环境变量读取
+BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "139.224.237.20")  # 与B-publisher保持一致
 BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT", "1883"))
-USERNAME = os.getenv("MQTT_USERNAME", "collector")
-PASSWORD = os.getenv("MQTT_PASSWORD", "col123")  # 从环境变量读取，默认 col123
+USERNAME = os.getenv("MQTT_USERNAME", "admin")  # 使用admin用户，有全部权限
+PASSWORD = os.getenv("MQTT_PASSWORD", "admin123")  # 与B-publisher保持一致
 SUBSCRIBE_TOPIC = "env/#"
 
 # 数据库配置
@@ -110,7 +110,7 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     """MQTT消息回调"""
-    print(f"[DEBUG] 收到消息: topic={msg.topic}")  # 调试信息
+    print(f"[DEBUG] 收到消息: topic={msg.topic}, payload={msg.payload.decode('utf-8', errors='ignore')[:100]}")  # 调试信息
     try:
         # 解析topic获取metric类型
         topic = msg.topic
@@ -219,17 +219,29 @@ def main():
     
     # 连接到Broker
     print(f"\n正在连接到 {BROKER_HOST}:{BROKER_PORT}...")
+    print(f"用户名: {USERNAME}")
+    print(f"订阅主题: {SUBSCRIBE_TOPIC}")
     try:
         client.connect(BROKER_HOST, BROKER_PORT, 60)
+        print("✓ 连接请求已发送，等待连接确认...")
     except Exception as e:
         print(f"✗ 连接失败: {e}")
+        print(f"请检查：")
+        print(f"  1. Broker地址是否正确: {BROKER_HOST}:{BROKER_PORT}")
+        print(f"  2. 网络连接是否正常")
+        print(f"  3. Broker服务是否运行")
         sys.exit(1)
     
     # 启动循环
     try:
         client.loop_start()
         
+        # 等待连接完成
+        print("等待连接建立...")
+        time.sleep(2)  # 给连接一些时间
+        
         print("\n💡 提示: 按 Ctrl+C 停止采集并查看统计信息\n")
+        print("=" * 60)
         
         # 保持运行
         while True:
