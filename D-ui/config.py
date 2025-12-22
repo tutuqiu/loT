@@ -10,9 +10,6 @@ from pathlib import Path
 @dataclass
 class Config:
     """应用配置"""
-    # C-collector API 基础URL
-    C_API_BASE: str = "http://127.0.0.1:8000"
-    
     # B-publisher 脚本路径（相对于项目根目录）
     PUBLISHER_SCRIPT: str = "B-publisher/publish.py"
     
@@ -21,8 +18,9 @@ class Config:
     
     # 默认参数
     DEFAULT_RATE: float = 1.0
-    DEFAULT_LIMIT: int = 200
-    DEFAULT_REFRESH_INTERVAL: int = 1000  # 毫秒（1秒刷新一次，更及时）
+    
+    # 当前发布速度（全局共享，供订阅端显示）
+    CURRENT_PUBLISH_RATE: float = 1.0
     
     # MQTT配置（与实际IoT项目保持一致）
     # 注意：B-publisher使用admin/admin123，C-collector使用collector/col123
@@ -58,12 +56,6 @@ class Config:
                     return test_path
         
         return script_path
-    
-    def get_api_url(self, endpoint: str) -> str:
-        """构建完整的API URL"""
-        base = self.C_API_BASE.rstrip('/')
-        endpoint = endpoint.lstrip('/')
-        return f"{base}/{endpoint}"
 
 
 # 全局配置实例

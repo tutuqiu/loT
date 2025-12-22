@@ -113,10 +113,8 @@ def publish_data(metric,rate=1,start=None,end=None):
     # 等待连接成功
     time.sleep(1)
     
-    # 发布 - 直接发布到env/，绕过proxy（如果使用admin用户）
-    # 如果使用publisher用户，需要保持ingest/env/，并运行proxy服务
-    topic = f"env/{metric}"  # 改为直接发布到env/
-    print(f"发布主题: {topic}")
+    # publisher用户只能发布到 ingest/env/#，需要Proxy服务转发到 env/#
+    topic = f"ingest/env/{metric}"
 
     s = start if start else "/"
     e = end if end else "/"
@@ -142,11 +140,9 @@ def publish_data(metric,rate=1,start=None,end=None):
 
         payload = payloads[i]
         
-        # 每100条或最后一条打印进度（包含数据值用于验证）
+        # 每100条或最后一条打印进度
         if (i + 1) % 100 == 0 or i == total - 1:
-            value_str = f"{payload['value']:.1f}" if payload['value'] is not None else "NULL"
-            print(f"[进度] {i+1}/{total} ({100*(i+1)/total:.1f}%) - {payload['ts']} = {value_str}", flush=True)
-        # 移除详细payload打印，减少日志噪音
+            print(f"[进度] {i+1}/{total} ({100*(i+1)/total:.1f}%) - {payload['ts']}", flush=True)
 
         # 发布
         result = client.publish(topic, json.dumps(payload), qos=0)

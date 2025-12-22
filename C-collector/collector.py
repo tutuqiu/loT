@@ -110,7 +110,6 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     """MQTT消息回调"""
-    print(f"[DEBUG] 收到消息: topic={msg.topic}, payload={msg.payload.decode('utf-8', errors='ignore')[:100]}")  # 调试信息
     try:
         # 解析topic获取metric类型
         topic = msg.topic

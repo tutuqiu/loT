@@ -3,7 +3,7 @@
 """
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
-    QGroupBox
+    QGroupBox, QComboBox
 )
 from PyQt5.QtCore import (
     QProcess, QTimer, Qt, pyqtSignal, QObject
@@ -190,6 +190,27 @@ class PublisherPage(QWidget):
         title.setFont(QFont("Microsoft YaHei", 24, QFont.Bold))
         layout.addWidget(title)
         
+        # 发布速度选择（全局设置，所有指标共用）
+        speed_layout = QHBoxLayout()
+        speed_label = QLabel("发布速度:")
+        speed_label.setFont(QFont("Microsoft YaHei", 12))
+        speed_layout.addWidget(speed_label)
+        
+        self.speed_combo = QComboBox()
+        self.speed_combo.addItems(["0.5 Hz", "1.0 Hz", "2.0 Hz", "5.0 Hz", "10.0 Hz"])
+        self.speed_combo.setCurrentText("1.0 Hz")  # 默认1.0 Hz
+        self.speed_combo.setFont(QFont("Microsoft YaHei", 12))
+        self.speed_combo.setMinimumWidth(120)
+        # 当速度改变时，更新全局配置
+        self.speed_combo.currentTextChanged.connect(self.on_speed_changed)
+        speed_layout.addWidget(self.speed_combo)
+        
+        speed_layout.addStretch()
+        layout.addLayout(speed_layout)
+        
+        # 初始化全局配置中的当前发布速度
+        config.CURRENT_PUBLISH_RATE = 1.0
+        
         # 按钮组（每个指标分为开始和停止两个按钮）
         buttons_layout = QVBoxLayout()
         buttons_layout.setSpacing(20)
@@ -366,10 +387,17 @@ class PublisherPage(QWidget):
     def start_publish(self, metric: str):
         """开始发布"""
         controller = self.controllers[metric]
-        # 启动发布（使用默认速率1.0 Hz）
-        if controller.start(rate=1.0):
+        # 从下拉框获取选择的发布速度
+        speed_text = self.speed_combo.currentText()
+        rate = float(speed_text.replace(" Hz", ""))
+        
+        # 更新全局配置中的当前发布速度
+        config.CURRENT_PUBLISH_RATE = rate
+        
+        # 启动发布（使用选择的速率）
+        if controller.start(rate=rate):
             self.button_states[metric] = True
-            self.response_label.setText(f"{self.get_metric_name(metric)} 数据发布已启动")
+            self.response_label.setText(f"{self.get_metric_name(metric)} 数据发布已启动（速度: {speed_text}）")
         else:
             self.response_label.setText(f"{self.get_metric_name(metric)} 数据发布启动失败，请查看日志")
     
@@ -427,6 +455,15 @@ class PublisherPage(QWidget):
         """返回主页"""
         if hasattr(self, 'main_window') and self.main_window:
             self.main_window.switch_to_home()
+    
+    def on_speed_changed(self, speed_text: str):
+        """速度选择改变时的回调"""
+        rate = float(speed_text.replace(" Hz", ""))
+        config.CURRENT_PUBLISH_RATE = rate
+        # 如果当前有正在运行的发布，动态修改速率
+        for metric, controller in self.controllers.items():
+            if controller.status == "Running":
+                controller.set_rate(rate)
     
     def on_viewer_clicked(self):
         """跳转到数据查看页面"""

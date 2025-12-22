@@ -169,9 +169,7 @@ class HomePage(QWidget):
                     label.lower()  # 将背景图片放在最底层
                     self.background_labels.append((label, config))
             except Exception as e:
-                print(f"加载背景图片 {config['file']} 时出错: {e}")
-                import traceback
-                traceback.print_exc()
+                pass
                 continue
     
     def resizeEvent(self, event):

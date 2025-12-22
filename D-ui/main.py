@@ -68,9 +68,7 @@ def main():
         
         sys.exit(app.exec_())
     except Exception as e:
-        import traceback
         print(f"程序启动失败: {e}")
-        traceback.print_exc()
         sys.exit(1)
 
 
