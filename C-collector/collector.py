@@ -17,8 +17,8 @@ import paho.mqtt.client as mqtt
 # MQTT配置
 BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "139.224.237.20")  # 与B-publisher保持一致
 BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT", "1883"))
-USERNAME = os.getenv("MQTT_USERNAME", "admin")  # 使用admin用户，有全部权限
-PASSWORD = os.getenv("MQTT_PASSWORD", "admin123")  # 与B-publisher保持一致
+USERNAME = os.getenv("MQTT_USERNAME", "collector")  # collector用户只能订阅 env/#
+PASSWORD = os.getenv("MQTT_PASSWORD", "col123")
 SUBSCRIBE_TOPIC = "env/#"
 
 # 数据库配置

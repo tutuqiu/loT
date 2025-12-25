@@ -1,20 +1,20 @@
 """
 HTTP 请求工作线程模块
 """
+import json
 import requests
 from PyQt5.QtCore import QThread, pyqtSignal
 
 
 class HttpWorker(QThread):
     """HTTP请求工作线程"""
+    finished = pyqtSignal(dict)
+    error = pyqtSignal(str)
     
-    finished = pyqtSignal(dict)  # 成功时发送数据
-    error = pyqtSignal(str)  # 失败时发送错误信息
-    
-    def __init__(self, url: str, params: dict = None, parent=None):
+    def __init__(self, url, params, parent=None):
         super().__init__(parent)
         self.url = url
-        self.params = params or {}
+        self.params = params
     
     def run(self):
         """执行HTTP请求"""
@@ -30,11 +30,11 @@ class HttpWorker(QThread):
             self.error.emit("请求超时")
         except requests.exceptions.ConnectionError:
             print(f"[HTTP Worker] 连接失败: {self.url}")
-            self.error.emit("连接失败，请检查C-collector是否运行")
+            self.error.emit("连接失败")
         except requests.exceptions.HTTPError as e:
             print(f"[HTTP Worker] HTTP错误: {e}")
             self.error.emit(f"HTTP错误: {e}")
-        except ValueError as e:
+        except json.JSONDecodeError as e:
             print(f"[HTTP Worker] JSON解析失败: {e}")
             self.error.emit(f"JSON解析失败: {e}")
         except Exception as e:

@@ -6,8 +6,8 @@ import argparse
 # 连接配置
 BROKER_HOST = "139.224.237.20"
 BROKER_PORT = 1883
-USERNAME = "admin"  # 使用admin用户，有全部权限
-PASSWORD = "admin123"
+USERNAME = "publisher"  # publisher用户只能发布到 ingest/env/#
+PASSWORD = "pub123"
 
 # 发布mid集合
 pending_mids=set()

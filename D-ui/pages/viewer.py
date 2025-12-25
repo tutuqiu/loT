@@ -88,7 +88,7 @@ class SubscriptionWidget(QWidget):
 
         # 预测说明标签
         self.prediction_label = QLabel(
-            f"预测说明：当收到10个实时数据点后，将使用最近最多 {self._prediction_window} 个数据点的加权移动平均/线性趋势外推未来走势。历史预测点（红点）固定不变，未来预测（红色虚线）持续更新。"
+            f"预测说明：当收到10个实时数据点后，将使用最近最多 {self._prediction_window} 个数据点的加权移动平均/线性趋势外推未来走势。"
         )
         self.prediction_label.setWordWrap(True)
         self.prediction_label.setStyleSheet("color: #7f8c8d; font-size: 12px;")
@@ -156,6 +156,7 @@ class SubscriptionWidget(QWidget):
             self.mqtt_subscriber.connected.connect(self.on_mqtt_connected)
             self.mqtt_subscriber.message_received.connect(self.on_message_received)
             self.mqtt_subscriber.error.connect(self.on_mqtt_error)
+            self.mqtt_subscriber.disconnected.connect(self.on_mqtt_disconnected)
             
             # 初始化图表数据
             if not hasattr(self, '_chart_data'):
@@ -180,7 +181,7 @@ class SubscriptionWidget(QWidget):
         # 停止重绘定时器
         if hasattr(self, '_redraw_timer'):
             self._redraw_timer.stop()
-        
+            
         # 如果还有未显示的当天数据，显示统计信息
         if self.current_date and self.daily_data:
             self.add_daily_statistics_row()
@@ -193,6 +194,7 @@ class SubscriptionWidget(QWidget):
         """MQTT连接成功"""
         # 使用实际项目的主题格式：env/temperature, env/humidity, env/pressure
         topic = f"env/{self.metric}"
+        print(f"[订阅端-{self.metric}] MQTT连接成功，准备订阅主题: {topic}")
         self.mqtt_subscriber.subscribe_topic(topic)
         self.is_subscribed = True
         self.subscribe_btn.setText(f"取消订阅{self.get_metric_name()}数据")
@@ -223,6 +225,8 @@ class SubscriptionWidget(QWidget):
         try:
             # 实际项目使用主题格式：env/temperature, env/humidity, env/pressure
             expected_topic = f"env/{self.metric}"
+            # 调试：打印收到的消息
+            print(f"[订阅端-{self.metric}] 收到消息: topic={topic}, expected={expected_topic}, data={data}")
             if topic == expected_topic:
                 # 实际项目的消息格式：{"ts": "2014-02-13T00:00:00", "value": 4.0}
                 
@@ -266,7 +270,7 @@ class SubscriptionWidget(QWidget):
                         'value': value_str,
                         'graph': ''
                     })
-                    
+        
                     # 使用QTimer确保UI更新在主线程中执行
                     def update_ui():
                         try:
@@ -566,7 +570,7 @@ class SubscriptionWidget(QWidget):
                     color="#3498db",
                     label=f"{self.get_metric_name()}历史数据",
                 )
-
+        
                 # 计算新的预测点（使用完整的 _chart_data 进行预测，而不是只使用显示的数据）
                 # 这样可以获得更准确的预测
                 full_times = [item[0] for item in self._chart_data]
@@ -636,7 +640,7 @@ class SubscriptionWidget(QWidget):
                     # 确保 last_real_time 是 naive datetime
                     if last_real_time.tzinfo is not None:
                         last_real_time = last_real_time.replace(tzinfo=None)
-                    
+        
                     # 绘制历史拟合点（固定不变）
                     if self._historical_fit_points:
                         historical_fit = []
@@ -710,8 +714,17 @@ class SubscriptionWidget(QWidget):
         
     def on_mqtt_error(self, error_msg: str):
         """MQTT错误"""
+        print(f"[订阅端-{self.metric}] MQTT错误: {error_msg}")
         QMessageBox.critical(self, "MQTT错误", error_msg)
     
+    def on_mqtt_disconnected(self):
+        """MQTT断开连接"""
+        print(f"[订阅端-{self.metric}] MQTT连接已断开")
+        if self.is_subscribed:
+            # 如果还在订阅状态，标记为未订阅，等待自动重连
+            self.is_subscribed = False
+            self.subscribe_btn.setText(f"订阅{self.get_metric_name()}数据（连接断开，等待重连...）")
+
 class ViewerPage(QWidget):
     """数据查看页面（订阅端）"""
     

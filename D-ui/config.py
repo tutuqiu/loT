@@ -23,7 +23,7 @@ class Config:
     CURRENT_PUBLISH_RATE: float = 1.0
     
     # MQTT配置（与实际IoT项目保持一致）
-    # 注意：B-publisher使用admin/admin123，C-collector使用collector/col123
+    # 注意：B-publisher使用publisher/pub123，C-collector使用collector/col123
     # D-ui作为订阅端，使用collector用户（有订阅权限）
     MQTT_BROKER_HOST: str = "139.224.237.20"
     MQTT_BROKER_PORT: int = 1883

@@ -110,6 +110,17 @@ class MQTTSubscriber(QThread):
         """连接回调"""
         if rc == 0:
             self._connected = True
+            print(f"[MQTT Worker] 连接成功，重新订阅之前的主题...")
+            # 重新订阅之前订阅过的主题
+            for topic in self.subscribed_topics.copy():
+                try:
+                    result, mid = client.subscribe(topic, qos=1)
+                    if result == 0:  # MQTT_ERR_SUCCESS = 0
+                        print(f"[MQTT Worker] 重新订阅成功: {topic}")
+                    else:
+                        print(f"[MQTT Worker] 重新订阅失败: {topic}, 错误码: {result}")
+                except Exception as e:
+                    print(f"[MQTT Worker] 重新订阅异常: {topic}, {e}")
             self.connected.emit()
         else:
             error_codes = {
@@ -120,6 +131,7 @@ class MQTTSubscriber(QThread):
                 5: "未授权"
             }
             error_msg = error_codes.get(rc, f"未知错误码: {rc}")
+            print(f"[MQTT Worker] 连接失败: {error_msg} (错误码: {rc})")
             self.error.emit(f"MQTT连接失败: {error_msg} (错误码: {rc})")
     
     def on_message(self, client, userdata, msg):
@@ -127,14 +139,32 @@ class MQTTSubscriber(QThread):
         try:
             topic = msg.topic
             payload = msg.payload.decode('utf-8')
+            print(f"[MQTT Worker] 收到消息: topic={topic}, payload={payload[:100]}")
             data = json.loads(payload)
             self.message_received.emit(topic, data)
         except Exception as e:
+            print(f"[MQTT Worker] 消息解析错误: {e}, topic={msg.topic}, payload={msg.payload.decode('utf-8', errors='ignore')[:100]}")
             self.error.emit(f"消息解析错误: {str(e)}")
     
     def on_disconnect(self, client, userdata, rc):
         """断开连接回调"""
-        self.disconnected.emit()
+        self._connected = False
+        if rc != 0:
+            # 非正常断开，尝试重连
+            print(f"[MQTT Worker] 意外断开连接 (错误码: {rc})，尝试重连...")
+            self.disconnected.emit()
+            # 自动重连
+            if self.running:
+                import time
+                time.sleep(2)  # 等待2秒后重连
+                if self.running and self.client:
+                    try:
+                        self.client.reconnect()
+                    except Exception as e:
+                        print(f"[MQTT Worker] 重连失败: {e}")
+        else:
+            # 正常断开
+            self.disconnected.emit()
     
     def subscribe_topic(self, topic: str):
         """订阅主题"""

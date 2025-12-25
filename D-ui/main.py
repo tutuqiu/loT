@@ -2,11 +2,8 @@
 主程序入口
 """
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QStackedWidget
-from PyQt5.QtCore import Qt
-from pages.home import HomePage
-from pages.publisher import PublisherPage
-from pages.viewer import ViewerPage
+from PyQt5.QtWidgets import QApplication, QMainWindow
+from pages.combined import CombinedPage
 
 
 class MainWindow(QMainWindow):
@@ -18,41 +15,11 @@ class MainWindow(QMainWindow):
     
     def init_ui(self):
         self.setWindowTitle("IoT 数据发布订阅及分析系统")
-        self.setMinimumSize(1200, 800)
+        self.setMinimumSize(1400, 900)
         
-        # 创建堆叠窗口
-        self.stacked_widget = QStackedWidget()
-        self.setCentralWidget(self.stacked_widget)
-        
-        # 创建页面
-        self.home_page = HomePage()
-        self.publisher_page = PublisherPage()
-        self.viewer_page = ViewerPage()
-        
-        # 设置主窗口引用（用于页面切换）
-        self.home_page.main_window = self
-        self.publisher_page.main_window = self
-        self.viewer_page.main_window = self
-        
-        # 添加到堆叠窗口
-        self.stacked_widget.addWidget(self.home_page)
-        self.stacked_widget.addWidget(self.publisher_page)
-        self.stacked_widget.addWidget(self.viewer_page)
-        
-        # 显示首页
-        self.stacked_widget.setCurrentWidget(self.home_page)
-    
-    def switch_to_home(self):
-        """切换到首页"""
-        self.stacked_widget.setCurrentWidget(self.home_page)
-    
-    def switch_to_publisher(self):
-        """切换到发布端控制页面"""
-        self.stacked_widget.setCurrentWidget(self.publisher_page)
-    
-    def switch_to_viewer(self):
-        """切换到数据查看页面"""
-        self.stacked_widget.setCurrentWidget(self.viewer_page)
+        # 直接显示组合页面
+        self.combined_page = CombinedPage()
+        self.setCentralWidget(self.combined_page)
 
 
 def main():
